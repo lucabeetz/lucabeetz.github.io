@@ -3,6 +3,7 @@ layout: post
 title:  "Physics Informed Neural Networks and JAX"
 date:   2021-12-03 22:21:12 +0100
 categories: dl physics
+usemathjax: true
 ---
 This is a short blog plost explaining the idea behind physics informed neural networks (PINNs) and
 how to implement one using [JAX](https://github.com/google/jax), a high-performance machine learning
