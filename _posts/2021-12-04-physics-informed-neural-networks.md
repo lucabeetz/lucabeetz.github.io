@@ -4,8 +4,6 @@ title:  "Physics Informed Neural Networks and JAX"
 date:   2021-12-03 22:21:12 +0100
 categories: dl physics
 ---
-{% katexmm %}
-
 This is a short blog plost explaining the idea behind physics informed neural networks (PINNs) and
 how to implement one using [JAX](https://github.com/google/jax), a high-performance machine learning
 library.
@@ -23,13 +21,13 @@ $$
 m\frac{d^2x}{dt^2} + c\frac{dx}{dt} + kx = 0
 $$
 
-Here, $x$ is the deviation from the equillibrium point (point of rest), $m$ is the mass of the 
-oscillating object and $c$ and $k$ are constants declaring the strength of friction and of the force
-pulling the object back towards $x = 0$.
+Here, $$x$$ is the deviation from the equillibrium point (point of rest), $$m$$ is the mass of the 
+oscillating object and $$c$$ and $$k$$ are constants declaring the strength of friction and of the force
+pulling the object back towards $$x = 0$$.
 
-The solution to this differential equation (DE) would be an equation $x(t)$ which satisfies the upper
-equation and tells us the position $x$ of the object at timestep $t$, given some initial conditions.
-The equation $x(t)$ is exactly what our network will learn and we will use the DE as an additional
+The solution to this differential equation (DE) would be an equation $$x(t)$$ which satisfies the upper
+equation and tells us the position $$x$$ of the object at timestep $$t$$, given some initial conditions.
+The equation $$x(t)$$ is exactly what our network will learn and we will use the DE as an additional
 loss term to help the network learn the underlying physics of the problem.
 
 ### Generating the training data
@@ -38,7 +36,7 @@ We will use the analytical solution of the damped harmonic oscillator to generat
 the network. In a more elaborate example these points would come from a physical simulator, e.g. a
 [finite difference method](https://en.wikipedia.org/wiki/Finite_difference_method).
 
-Using the solution, we create a graph $x(t)$ of the oscillator given some initial conditions and
+Using the solution, we create a graph $$x(t)$$ of the oscillator given some initial conditions and
 sample 10 points (orange dots) to use a training data for the network.
 
 [Full code for this example](https://github.com/lucabeetz/pinns/blob/main/harmonic_oscillator.ipynb)
@@ -50,7 +48,7 @@ sample 10 points (orange dots) to use a training data for the network.
 ## The network and a physics-agnostic loss
 
 We will use a three layer MLP with 32 neurons per layer and Tanh activation functions. The network
-has one input $t$ and one output $x$. By itself, JAX does not have many tools for implementing
+has one input $$t$$ and one output $$x$$. By itself, JAX does not have many tools for implementing
 neural networks and training them but there are multiple ML libraries built on top of it to do just that.
 Here we'll use [Haiku](https://github.com/deepmind/dm-haiku) for building the network and
 [Optax](https://github.com/deepmind/optax) for training it. Both libraries are open-source and
@@ -111,9 +109,9 @@ L_{data} = \frac{1}{N} \sum_{i}^N (x_{NN}(t_i; \theta) - x_{true}(t_i))^2
 $$
 
 This naive loss only minimizes the distance between the training data and the network's prediction
-at some sampled timesteps $t$. When we remember that the model, parameterised by weights $\theta$,
-is supposed to learn the function $x(t)$, we can include an additional piece of information in
-the loss function. Namely, that the derivatives $\frac{dx}{dt}$ and $\frac{d^2x}{dt^2}$ should
+at some sampled timesteps $$t$$. When we remember that the model, parameterised by weights $$\theta$$,
+is supposed to learn the function $$x(t)$$, we can include an additional piece of information in
+the loss function. Namely, that the derivatives $$\frac{dx}{dt}$$ and $$\frac{d^2x}{dt^2}$$ should
 satisfy the differential equation we introduced earlier:
 
 $$
@@ -130,12 +128,12 @@ $$
 L_{DE} = \frac{1}{M} \sum_{j}^M ([m \frac{d^2}{dt^2} + c \frac{d}{dx} + k] x_{NN}(t_j; \theta) )^2
 $$
 
-Where $L_{DE}$ makes sure that the network and its first and second order derivatives match the
-differential equation at different inputs $t_j$. Using this kind of loss is the idea behind
+Where $$L_{DE}$$ makes sure that the network and its first and second order derivatives match the
+differential equation at different inputs $$t_j$$. Using this kind of loss is the idea behind
 *Physics-Informed Neural Networks* [1] (PINNs for short).
 
-To calculate the $L_{DE}$ loss we need to calculate the first and second order derivative of the
-neural network $x(t; \theta)$ with respect to its input $t$. Thanks to Jax's [`jax.grad`](https://jax.readthedocs.io/en/latest/jax.html?highlight=grad#jax.grad)
+To calculate the $$L_{DE}$$ loss we need to calculate the first and second order derivative of the
+neural network $$x(t; \theta)$$ with respect to its input $$t$$. Thanks to Jax's [`jax.grad`](https://jax.readthedocs.io/en/latest/jax.html?highlight=grad#jax.grad)
 doing this is fairly straightforward, as can be seen in the code sample below.
 
 ```python
@@ -160,11 +158,11 @@ def loss_physics(params: hk.Params, t_data: jnp.array, x_data: jnp.array, t_phys
 ```
 
 The important lines here are the three where we define the `x`, `x_dt` and `x_dt2` functions.
-`net.apply(params, t)` feeds the $t$ value through the network and returns an output tensor of shape
+`net.apply(params, t)` feeds the $$t$$ value through the network and returns an output tensor of shape
 `(1,)`. Because `jax.grad` only works on scalar-valued functions we have to index into the array and
-return the single element. To make this easy we define a lambda function `x(t)` which takes a $t$ as
-input and returns the corresponding $x(t)$, predicted by the network. Using this function, we can
-now easily calculate the first derivative $\frac{dx}{dt}$ by applying `jax.grad` to `x`.
+return the single element. To make this easy we define a lambda function `x(t)` which takes a $$t$$ as
+input and returns the corresponding $$x(t)$$, predicted by the network. Using this function, we can
+now easily calculate the first derivative $$\frac{dx}{dt}$$ by applying `jax.grad` to `x`.
 
 Because we would like to evaluate `x_dt` on batches of shape `(M, 1)` instead of just individual
 values, we apply `jax.vmap` to the function returned by `jax.grad(x)`. [`vmap(f)`](https://jax.readthedocs.io/en/latest/jax.html?highlight=vmap#jax.vmap)
@@ -176,12 +174,12 @@ automatically add a batch dimension. The `[0]` index in the two lambda functions
 weird here but it would be absolutely necessary if we had a network (physical model) with multiple
 inputs or outputs.
 
-After this we use `x`, `x_dt` and `x_dt2` to calculate the physics loss $L_{DE}$ ("residual") and
-add it to the data loss $L_{data}$ with a scaling factor $\lambda = 10^{-4}$.
+After this we use `x`, `x_dt` and `x_dt2` to calculate the physics loss $$L_{DE}$$ ("residual") and
+add it to the data loss $$L_{data}$$ with a scaling factor $$\lambda = 10^{-4}$$.
 
 The trained network now matches the theoretical model over the whole time range and only requires
 *two* data points to converge to the correct solution. The plot below shows the solution after 20k
-training steps and the green dots represent the time points $t_j$ where we evaluated the first and
+training steps and the green dots represent the time points $$t_j$$ where we evaluated the first and
 second order derivative.
 
 {:refdef: style="text-align: center;"}
@@ -227,5 +225,3 @@ Here is a paper explaining when the training of PINNs can fail and how to preven
 ## References
 
 [1] *Maziar Raissi and Paris Perdikaris and George Em Karniadakis:* [Physics Informed Deep Learning (Part I): Data-driven Solutions of Nonlinear Partial Differential Equations](https://arxiv.org/abs/1711.10561)
-
-{% endkatexmm %}
